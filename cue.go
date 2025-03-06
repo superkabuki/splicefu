@@ -141,66 +141,6 @@ func (cue *Cue) Encode2Hex() string {
 	return Hexed(cue.Encode())
 }
 
-// used by Six2Five to convert a time signal to a splice insert
-func (cue *Cue) mkSpliceInsert() {
-	cue.Command.CommandType = 5
-	cue.Command.Name = "Splice Insert"
-	cue.InfoSection.CommandType = 5
-	cue.Command.ProgramSpliceFlag = true
-	cue.Command.SpliceEventCancelIndicator = false
-	cue.Command.EventIDComplianceFlag = true
-	cue.Command.OutOfNetworkIndicator = false
-	cue.Command.TimeSpecifiedFlag = false
-	cue.Command.DurationFlag = false
-	cue.Command.BreakAutoReturn = false
-	cue.Command.SpliceImmediateFlag = false
-	cue.Command.AvailNum = 0
-	cue.Command.AvailExpected = 0
-	if cue.Command.PTS > 0.0 {
-		cue.Command.TimeSpecifiedFlag = true
-		//cue.Command.PTS = cue.Command.PTS
-	}
-}
-
-/*
-*
-
-		Convert  Cue.Command  from a  Time Signal
-		to a Splice Insert and return a base64 string
-	 	SegmentationTypeIds to trigger CUE-OUTs : 0x22, 0x30, 0x32, 0x34, 0x36, 0x44, 0x46
-		SegmentationTypeIds to trigger CUE-INs:  0x23, 0x31, 0x33, 0x35, 0x37, 0x45, 0x47
-
-*
-*/
-func (cue *Cue) Six2Five() string {
-	segStarts := []uint16{0x22, 0x30, 0x32, 0x34, 0x36, 0x44, 0x46}
-	segStops := []uint16{0x23, 0x31, 0x33, 0x35, 0x37, 0x45, 0x47}
-	if cue.InfoSection.CommandType == 6 {
-		for _, dscptr := range cue.Descriptors {
-			if dscptr.Tag == 2 {
-				//value, _ := strconv.ParseInt(hex, 16, 64)
-				cue.Command.SpliceEventID = uint32(hex2Int(dscptr.SegmentationEventID))
-				if IsIn(segStarts, uint16(dscptr.SegmentationTypeID)) {
-					if dscptr.SegmentationDurationFlag {
-						cue.mkSpliceInsert()
-						cue.Command.OutOfNetworkIndicator = true
-						cue.Command.DurationFlag = true
-						cue.Command.BreakAutoReturn = true
-						cue.Command.BreakDuration = dscptr.SegmentationDuration
-						//	return encB64(cue.Encode())
-					}
-				} else {
-					if IsIn(segStops, uint16(dscptr.SegmentationTypeID)) {
-						cue.mkSpliceInsert()
-						//	return encB64(cue.Encode())
-					}
-				}
-			}
-		}
-	}
-	return encB64(cue.Encode())
-}
-
 // initialize and return a *Cue
 func NewCue() *Cue {
 	cue := &Cue{}
